@@ -628,156 +628,254 @@ class calendar_event {
 	}
 
 	public function calculOccurrence($_startDate, $_endDate, $_max = 9999999999, $_recurence = 0) {
-	    if ($_recurence > 5) {
-	        return [];
-	    }
-	    $_recurence++;
+		if ($_recurence > 5) {
+			return [];
+		}
+		$_recurence++;
 
-	    $startTime = $_startDate ? strtotime($_startDate) : strtotime('now - 2 year');
-	    $endTime = $_endDate ? strtotime($_endDate) : strtotime('now + 2 year');
-	    $_beginDate = $_startDate ? new DateTime($_startDate ) : new DateTime($this->getStartDate());
+		$startTime = $_startDate ? strtotime($_startDate) : strtotime('now - 2 year');
+		$endTime = $_endDate ? strtotime($_endDate) : strtotime('now + 2 year');
+		$_beginDate = $_startDate ? new DateTime($_startDate) : new DateTime($this->getStartDate());
 
-	    $return = [];
-	    $repeat = $this->getRepeat();
+		$return = [];
+		$repeat = $this->getRepeat();
 
-	    if ($repeat['enable'] != 1) {
-	        return $this->handleNonRepeatingEvent($startTime, $endTime);
-	    }
+		if ($repeat['enable'] != 1) {
+			return $this->handleNonRepeatingEvent($startTime, $endTime);
+		}
 
-	    $excludeDate = $this->getExcludedDates($repeat, $_startDate, $_endDate, $_max, $_recurence);
+		$excludeDate = $this->getExcludedDates($repeat, $_startDate, $_endDate, $_max, $_recurence);
 
-	    $currentDate = $_beginDate;
-	    $initStartTime = $this->getTimePart($this->getStartDate());
-	    $initEndTime = $this->getTimePart($this->getEndDate());
+		$currentDate = $_beginDate;
+		$initStartTime = $this->getTimePart($this->getStartDate());
+		$initEndTime = $this->getTimePart($this->getEndDate());
 
-	    while ($this->shouldContinue($currentDate, $startTime, $endTime, $repeat)) {
-	        $formattedDate = $currentDate->format('Y-m-d');
+		while ($this->shouldContinue($currentDate, $startTime, $endTime, $repeat)) {
+			$formattedDate = $currentDate->format('Y-m-d');
 
-	        if ($this->isDateIncluded($formattedDate, $repeat, $excludeDate) && $this->matchesNationalDayCriteria($formattedDate, $repeat)) {
-	            $return[] = [
-	                'start' => $currentDate->format('Y-m-d') . ' ' . $initStartTime,
-	                'end' => $currentDate->format('Y-m-d') . ' ' . $initEndTime,
-	            ];
-	            if (count($return) >= $_max) {
-	                return $return;
-	            }
-	        }
+			if ($this->isDateIncluded($formattedDate, $repeat, $excludeDate) && $this->matchesNationalDayCriteria($formattedDate, $repeat)) {
+				$return[] = [
+					'start' => $currentDate->format('Y-m-d') . ' ' . $initStartTime,
+					'end' => $currentDate->format('Y-m-d') . ' ' . $initEndTime,
+				];
+				if (count($return) >= $_max) {
+					return $return;
+				}
+			}
 
-	        $currentDate = $this->calculateNextOccurrence($currentDate, $repeat, $initStartTime, $initEndTime);
-	    }
-
-	    return $this->mergeIncludeDates($return, $repeat, $startTime, $endTime, $initStartTime, $initEndTime);
+			$currentDate = $this->calculateNextOccurrence($currentDate, $repeat, $initStartTime, $initEndTime);
+		}
+		
+		return $this->mergeIncludeDates($return, $repeat, $startTime, $endTime, $initStartTime, $initEndTime);
 	}
 
 	private function matchesNationalDayCriteria($date, $repeat) {
-	    $nationalDays = self::getNationalDay(date('Y', strtotime($date)));
+		$nationalDays = self::getNationalDay(date('Y', strtotime($date)));
 
-	    switch ($repeat['nationalDay']) {
-	        case 'exeptNationalDay':
-	            return !in_array($date, $nationalDays);
-	        case 'onlyNationalDay':
-	            return in_array($date, $nationalDays);
-	        case 'onlyEven':
-	            return (date('W', strtotime($date)) % 2) == 0;
-	        case 'onlyOdd':
-	            return (date('W', strtotime($date)) % 2) == 1;
-	        case 'all':  // 'all' means no filter on national day
-	        default:
-	            return true;
-	    }
+		switch ($repeat['nationalDay']) {
+			case 'exeptNationalDay':
+				return !in_array($date, $nationalDays);
+			case 'onlyNationalDay':
+				return in_array($date, $nationalDays);
+			case 'onlyEven':
+				return (date('W', strtotime($date)) % 2) == 0;
+			case 'onlyOdd':
+				return (date('W', strtotime($date)) % 2) == 1;
+			case 'all':  // 'all' means no filter on national day
+			default:
+				return true;
+		}
 	}
 
 	private function handleNonRepeatingEvent($startTime, $endTime) {
-	    if ($this->isEventWithinBounds($startTime, $endTime)) {
-	        return [[
-	            'start' => $this->getStartDate(),
-	            'end' => $this->getEndDate(),
-	        ]];
-	    }
-	    return [];
+		if ($this->isEventWithinBounds($startTime, $endTime)) {
+			return [[
+				'start' => $this->getStartDate(),
+				'end' => $this->getEndDate(),
+			]];
+		}
+		return [];
 	}
 
 	private function getExcludedDates($repeat, $_startDate, $_endDate, $_max, $_recurence) {
-	    $excludeDate = [];
+		$excludeDate = [];
 
-	    if (!empty($repeat['excludeDate'])) {
-	        $excludeDate = array_merge($excludeDate, $this->parseExcludeDates($repeat['excludeDate']));
-	    }
+		if (!empty($repeat['excludeDate'])) {
+			$excludeDate = array_merge($excludeDate, $this->parseExcludeDates($repeat['excludeDate']));
+		}
 
-	    if (!empty($repeat['excludeDateFromCalendar'])) {
-	        $excludeDate = array_merge($excludeDate, $this->getExcludeDatesFromCalendar($repeat, $_startDate, $_endDate, $_max, $_recurence));
-	    }
+		if (!empty($repeat['excludeDateFromCalendar'])) {
+			$excludeDate = array_merge($excludeDate, $this->getExcludeDatesFromCalendar($repeat, $_startDate, $_endDate, $_max, $_recurence));
+		}
 
-	    return $excludeDate;
+		return $excludeDate;
 	}
 
 	private function parseExcludeDates($excludeDateString) {
-	    $excludeDate = [];
-	    foreach (explode(',', $excludeDateString) as $date) {
-	        $dateRange = explode(':', $date);
-	        if (count($dateRange) === 2) {
-	            $excludeDate = array_merge($excludeDate, $this->generateDateRange($dateRange[0], $dateRange[1]));
-	        } else {
-	            $excludeDate[] = date('Y-m-d', strtotime($date));
-	        }
-	    }
-	    return $excludeDate;
+		$excludeDate = [];
+		foreach (explode(',', $excludeDateString) as $date) {
+			$dateRange = explode(':', $date);
+			if (count($dateRange) === 2) {
+				$excludeDate = array_merge($excludeDate, $this->generateDateRange($dateRange[0], $dateRange[1]));
+			} else {
+				$excludeDate[] = date('Y-m-d', strtotime($date));
+			}
+		}
+		return $excludeDate;
 	}
 
 	private function getExcludeDatesFromCalendar($repeat, $_startDate, $_endDate, $_max, $_recurence) {
-	    $excludeDates = [];
-	    $calendar = calendar::byId($repeat['excludeDateFromCalendar']);
-	    if (is_object($calendar)) {
-	        $events = $this->getEventsFromCalendar($calendar, $repeat);
-	        foreach ($events as $event) {
-	            $occurrences = $event->calculOccurrence($_startDate, $_endDate, $_max, $_recurence);
-	            foreach ($occurrences as $occurrence) {
-	                $excludeDates = array_merge($excludeDates, $this->generateDateRange($occurrence['start'], $occurrence['end']));
-	            }
-	        }
-	    }
-	    return $excludeDates;
+		$excludeDates = [];
+		$calendar = calendar::byId($repeat['excludeDateFromCalendar']);
+		if (is_object($calendar)) {
+			$events = $this->getEventsFromCalendar($calendar, $repeat);
+			foreach ($events as $event) {
+				$occurrences = $event->calculOccurrence($_startDate, $_endDate, $_max, $_recurence);
+				foreach ($occurrences as $occurrence) {
+					$excludeDates = array_merge($excludeDates, $this->generateDateRange($occurrence['start'], $occurrence['end']));
+				}
+			}
+		}
+		return $excludeDates;
 	}
 
 	private function generateDateRange($start, $end) {
-	    $dates = [];
-	    $startDate = new DateTime($start);
-	    $endDate = new DateTime($end);
+		$dates = [];
+		$startDate = new DateTime($start);
+		$endDate = new DateTime($end);
 
-	    while ($startDate <= $endDate) {
-	        $dates[] = $startDate->format('Y-m-d');
-	        $startDate->modify('+1 day');
-	    }
+		while ($startDate <= $endDate) {
+			$dates[] = $startDate->format('Y-m-d');
+			$startDate->modify('+1 day');
+		}
 
-	    return $dates;
+		return $dates;
 	}
 
 	private function shouldContinue($currentDate, $startTime, $endTime, $repeat) {
-	    $until = strtotime($this->getUntil());
-	    return ($until === false || $currentDate->getTimestamp() < $until) && $currentDate->getTimestamp() <= $endTime;
+		$until = strtotime($this->getUntil());
+		return ($until === false || $currentDate->getTimestamp() < $until) && $currentDate->getTimestamp() <= $endTime;
 	}
 
 	private function isDateIncluded($date, $repeat, $excludeDate) {
-	    return !in_array($date, $excludeDate) && $repeat['excludeDay'][date('N', strtotime($date))] == 1;
+		return !in_array($date, $excludeDate) && $repeat['excludeDay'][date('N', strtotime($date))] == 1;
 	}
 
 	private function calculateNextOccurrence($currentDate, $repeat, $initStartTime, $initEndTime) {
-	    $freq = $repeat['freq'];
-	    $unit = $repeat['unite'];
+		if (isset($repeat['mode']) && $repeat['mode'] === 'advance') {
+			// Calculate next occurrence based on "advance" rules.
+			$nextMonth = date('F', strtotime('+1 month ' . $currentDate->format('Y-m-d')));
+			$year = date('Y', strtotime('+1 month ' . $currentDate->format('Y-m-d')));
+			$nextDate = date('Y-m-d', strtotime($repeat['positionAt'] . ' ' . $repeat['day'] . ' of ' . $nextMonth . ' ' . $year));
 
-	    return $currentDate->modify("+$freq $unit");
+			if ($nextDate === '1970-01-01') {
+				return $currentDate; // Prevent infinite loop if an invalid date is calculated.
+			}
+
+			return new DateTime($nextDate . ' ' . $initStartTime);
+		}
+
+		// Regular recurrence based on frequency and unit.
+		$freq = $repeat['freq'];
+		$unit = $repeat['unite'];
+
+		return $currentDate->modify("+$freq $unit");
 	}
 
-	private function mergeIncludeDates($return, $repeat, $startTime, $endTime, $initStartTime, $initEndTime) {
-	    return $return;
+	private function mergeIncludeDates($occurrences, $repeat, $startTime, $endTime, $initStartTime, $initEndTime) {
+		$includeDates = $this->getIncludeDates($repeat, $startTime, $endTime);
+
+		foreach ($includeDates as $includeDate) {
+			$includeStart = $includeDate . ' ' . $initStartTime;
+			$includeEnd = $includeDate . ' ' . $initEndTime;
+
+			$isDuplicate = false;
+
+			foreach ($occurrences as $occurrence) {
+				if ($occurrence['start'] === $includeStart && $occurrence['end'] === $includeEnd) {
+					$isDuplicate = true;
+					break;
+				}
+			}
+
+			if (!$isDuplicate) {
+				$occurrences[] = [
+					'start' => $includeStart,
+					'end' => $includeEnd,
+				];
+			}
+		}
+
+		usort($occurrences, function ($a, $b) {
+			return strtotime($a['start']) - strtotime($b['start']);
+		});
+
+		return $occurrences;
+	}
+
+	private function getIncludeDates($repeat, $startTime, $endTime) {
+		$includeDates = [];
+
+		// Directly specified include dates
+		if (!empty($repeat['includeDate'])) {
+			$rawIncludeDates = explode(',', trim($repeat['includeDate'], ','));
+			foreach ($rawIncludeDates as $rawDate) {
+				if (strpos($rawDate, ':') !== false) {
+					list($rangeStart, $rangeEnd) = explode(':', $rawDate);
+					$this->addDateRange($rangeStart, $rangeEnd, $includeDates, $startTime, $endTime);
+				} else {
+					$this->addSingleDate($rawDate, $includeDates, $startTime, $endTime);
+				}
+			}
+		}
+
+		// Include dates from calendar events
+		if (!empty($repeat['includeDateFromCalendar'])) {
+			$calendar = calendar::byId($repeat['includeDateFromCalendar']);
+			if (is_object($calendar)) {
+				$events = $repeat['includeDateFromEvent'] === 'all' 
+					? self::getEventsByEqLogic($calendar->getId()) 
+					: [self::byId($repeat['includeDateFromEvent'])];
+				
+				foreach ($events as $event) {
+					if (is_object($event) && $event->getId() !== $this->getId()) {
+						$eventOccurrences = $event->calculOccurrence(null, null);
+						foreach ($eventOccurrences as $occurrence) {
+							$this->addDateRange($occurrence['start'], $occurrence['end'], $includeDates, $startTime, $endTime);
+						}
+					}
+				}
+			}
+		}
+
+		return $includeDates;
+	}
+
+	private function addDateRange($start, $end, &$dates, $startTime, $endTime) {
+		$startDate = strtotime($start);
+		$endDate = strtotime($end);
+
+		while ($startDate <= $endDate) {
+			if ($startDate >= $startTime && $startDate <= $endTime) {
+				$dates[] = date('Y-m-d', $startDate);
+			}
+			$startDate = strtotime('+1 day', $startDate);
+		}
+	}
+
+	private function addSingleDate($date, &$dates, $startTime, $endTime) {
+		$timestamp = strtotime($date);
+		if ($timestamp >= $startTime && $timestamp <= $endTime) {
+			$dates[] = date('Y-m-d', $timestamp);
+		}
 	}
 
 	private function getTimePart($dateTime) {
-	    return date('H:i:s', strtotime($dateTime));
+		return date('H:i:s', strtotime($dateTime));
 	}
 
 	private function isEventWithinBounds($startTime, $endTime) {
-	    return strtotime($this->getStartDate()) <= $endTime && strtotime($this->getEndDate()) >= $startTime;
+		return strtotime($this->getStartDate()) <= $endTime && strtotime($this->getEndDate()) >= $startTime;
 	}
 
 	public function preSave() {
